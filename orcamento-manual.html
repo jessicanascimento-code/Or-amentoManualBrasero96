@@ -32,25 +32,15 @@
     padding:24px 14px 60px;
   }
   .brand{ text-align:center; margin-bottom:18px; position:relative; }
-  .brand-name{
-    font-family:'Ultra', serif;
-    font-size:clamp(28px,7vw,40px);
-    margin:0;
-    background:linear-gradient(90deg,var(--brasero-red),var(--brasero-orange),var(--brasero-yellow));
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-    -webkit-text-fill-color:transparent;
+  .logo-central{
+    width:110px;
+    height:110px;
+    display:block;
+    margin:0 auto 6px;
+    filter:drop-shadow(0 6px 16px rgba(255,122,26,.3));
   }
   .brand p{ margin:4px 0 0; font-size:13px; color:var(--muted); }
 
-  .carimbo{
-    position:absolute;
-    width:64px; height:64px;
-    top:-6px; right:6px;
-    transform:rotate(-10deg);
-    filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));
-    opacity:.95;
-    pointer-events:none;
-  }
   .card{ position:relative; }
   .carimbo-resumo{
     position:absolute;
@@ -165,9 +155,8 @@
 <div class="brand">
   <picture>
     <source srcset="logo.webp" type="image/webp">
-    <img src="logo.png" alt="Brasero 96" class="carimbo">
+    <img src="logo.png" alt="Brasero 96" class="logo-central">
   </picture>
-  <p class="brand-name">BRASERO 96</p>
   <p>Orçamento manual — atendimento direto</p>
 </div>
 
@@ -177,8 +166,10 @@
     <span>👤 Quem está atendendo:</span>
     <select id="f-atendente">
       <option value="">Selecione...</option>
-      <option>Jessica</option>
-      <option>Deborah</option>
+      <option>Jessica Nascimento</option>
+      <option>Jessica Miranda</option>
+      <option>Thiago Xavier</option>
+      <option>Diêgo Xavier</option>
       <option value="__outro__">Outro nome...</option>
     </select>
     <input type="text" id="f-atendente-outro" placeholder="Seu nome" style="display:none;">
@@ -261,7 +252,7 @@ function nomeAtendente(){
 
 function initAtendente(){
   const salvo = localStorage.getItem("brasero96_atendente") || "";
-  const opcoesConhecidas = ["Jessica", "Deborah"];
+  const opcoesConhecidas = ["Jessica Nascimento", "Jessica Miranda", "Thiago Xavier", "Diêgo Xavier"];
   if (salvo && opcoesConhecidas.includes(salvo)) {
     $("f-atendente").value = salvo;
   } else if (salvo) {
