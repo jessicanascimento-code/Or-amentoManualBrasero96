@@ -207,6 +207,8 @@
   </div>
 
   <div class="resumo" id="resumo"></div>
+
+  <button class="btn-limpar" id="btn-salvar" style="background:linear-gradient(90deg,var(--brasero-red),var(--brasero-orange)); color:#fff; border:none;">💾 Salvar no histórico</button>
   <p id="status-salvo" style="text-align:center; font-size:11.5px; color:var(--muted); margin:-6px 0 0;"></p>
 
   <button class="btn-limpar" id="btn-limpar">🔄 Limpar tudo (novo cliente)</button>
@@ -263,11 +265,11 @@ function initAtendente(){
   $("f-atendente").onchange = () => {
     $("f-atendente-outro").style.display = $("f-atendente").value === "__outro__" ? "block" : "none";
     salvarAtendente();
-    if (typeof agendarSalvamento === "function") agendarSalvamento();
+    renderResumo();
   };
   $("f-atendente-outro").oninput = () => {
     salvarAtendente();
-    if (typeof agendarSalvamento === "function") agendarSalvamento();
+    renderResumo();
   };
 }
 function salvarAtendente(){
@@ -302,7 +304,6 @@ function renderSabores(){
       row.querySelector(".qty-input").oninput = (e) => {
         qtd[s.nome] = Math.max(parseInt(e.target.value) || 0, 0);
         renderResumo();
-        agendarSalvamento();
       };
       container.appendChild(row);
     });
@@ -348,21 +349,16 @@ function renderResumo(){
   `;
 }
 
-let debounceSalvar;
-function agendarSalvamento(){
-  $("status-salvo").textContent = "Salvando...";
-  clearTimeout(debounceSalvar);
-  debounceSalvar = setTimeout(salvarNoHistorico, 1200);
-}
-
 function salvarNoHistorico(){
   const itens = selecionados();
-  // Não salva enquanto não houver ao menos nome ou algum sabor escolhido —
-  // evita linhas vazias na planilha.
   if (!$("f-nome").value.trim() && itens.length === 0) {
-    $("status-salvo").textContent = "";
+    $("status-salvo").textContent = "Preencha ao menos o nome ou um sabor antes de salvar.";
+    $("status-salvo").style.color = "#ff8a80";
     return;
   }
+  $("status-salvo").textContent = "Salvando...";
+  $("status-salvo").style.color = "var(--muted)";
+
   const totalEspetos = itens.reduce((soma, i) => soma + i.unidades, 0);
   const valorEspetinhos = itens.reduce((soma, i) => soma + i.subtotal, 0);
   const valorServico = parseFloat($("f-servico").value) || 0;
@@ -386,18 +382,30 @@ function salvarNoHistorico(){
     valorTotal: valorTotal.toFixed(2),
     callback: "jsonpCallbackManual"
   });
-  window.jsonpCallbackManual = function(){
-    $("status-salvo").textContent = "✓ Salvo na planilha";
+  window.jsonpCallbackManual = function(resposta){
+    if (resposta && resposta.status === "erro") {
+      $("status-salvo").textContent = "❌ " + resposta.mensagem;
+      $("status-salvo").style.color = "#ff8a80";
+    } else {
+      $("status-salvo").textContent = "✓ Salvo na planilha às " + new Date().toLocaleTimeString("pt-BR");
+      $("status-salvo").style.color = "var(--muted)";
+    }
   };
   const script = document.createElement("script");
   script.src = SHEETS_WEBAPP_URL + "?" + params.toString();
+  script.onerror = () => {
+    $("status-salvo").textContent = "❌ Não foi possível conectar à planilha. Confira a URL do Apps Script.";
+    $("status-salvo").style.color = "#ff8a80";
+  };
   document.body.appendChild(script);
   setTimeout(() => script.remove(), 8000);
 }
 
 ["f-nome","f-telefone","f-tipo","f-data","f-convidados","f-local","f-servico"].forEach(id => {
-  $(id).addEventListener("input", () => { renderResumo(); agendarSalvamento(); });
+  $(id).addEventListener("input", renderResumo);
 });
+
+$("btn-salvar").onclick = salvarNoHistorico;
 
 $("btn-limpar").onclick = () => {
   if (!confirm("Limpar todos os campos e quantidades pra começar um novo cliente?")) return;
