@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brasero 96 — Orçamento Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Ultra&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --brasero-black:#0c0a09;
+    --brasero-black-soft:#171310;
+    --brasero-red:#e0231a;
+    --brasero-orange:#ff7a1a;
+    --brasero-yellow:#ffc42e;
+    --brasero-cream:#fff6e9;
+    --muted:#a89a8c;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(255,122,26,.2), transparent 60%),
+      var(--brasero-black);
+    color:var(--brasero-cream);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:24px 14px 60px;
+  }
+  .brand{ text-align:center; margin-bottom:18px; position:relative; }
+  .brand-name{
+    font-family:'Ultra', serif;
+    font-size:clamp(28px,7vw,40px);
+    margin:0;
+    background:linear-gradient(90deg,var(--brasero-red),var(--brasero-orange),var(--brasero-yellow));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    -webkit-text-fill-color:transparent;
+  }
+  .brand p{ margin:4px 0 0; font-size:13px; color:var(--muted); }
+
+  .carimbo{
+    position:absolute;
+    width:64px; height:64px;
+    top:-6px; right:6px;
+    transform:rotate(-10deg);
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));
+    opacity:.95;
+    pointer-events:none;
+  }
+  .card{ position:relative; }
+  .carimbo-resumo{
+    position:absolute;
+    width:56px; height:56px;
+    top:-14px; right:-10px;
+    transform:rotate(-12deg);
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.45));
+    pointer-events:none;
+  }
+
+  .col{ width:100%; max-width:480px; display:flex; flex-direction:column; gap:16px; }
+
+  .atendente-bar{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background:rgba(255,122,26,.08); border:1px solid rgba(255,122,26,.3);
+    border-radius:10px; padding:8px 12px; font-size:12.5px; margin-bottom:16px;
+  }
+  .atendente-bar select, .atendente-bar input{
+    width:auto; flex:1; max-width:180px; padding:6px 8px !important; font-size:13px;
+  }
+
+  .card{
+    background:var(--brasero-black-soft);
+    border:1px solid #2a2119;
+    border-radius:var(--radius);
+    padding:20px;
+  }
+  .card h2{
+    font-family:'Poppins',sans-serif; font-size:15px; font-weight:700;
+    color:var(--brasero-yellow); margin:0 0 12px;
+  }
+  label{ display:block; font-size:12.5px; font-weight:600; margin:10px 0 4px; }
+  label.first{ margin-top:0; }
+  input[type=text], input[type=tel], input[type=date], input[type=number], select{
+    width:100%; -webkit-appearance:none; appearance:none;
+    background:#0c0a09; border:1.5px solid #382c22; border-radius:9px;
+    padding:9px 10px; color:var(--brasero-cream); font-family:'Inter',sans-serif;
+    font-size:14px; outline:none;
+  }
+  input:focus, select:focus{ border-color:var(--brasero-orange); }
+  .grid2{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; }
+
+  .cat-title{
+    font-size:11.5px; text-transform:uppercase; letter-spacing:.5px;
+    color:var(--brasero-orange); font-weight:700; margin:14px 0 6px;
+  }
+  .sabor-row{
+    display:flex; justify-content:space-between; align-items:center;
+    gap:10px; padding:8px 0; border-bottom:1px solid #241c15;
+  }
+  .sabor-row:last-child{ border-bottom:none; }
+  .sabor-info{ flex:1; min-width:0; }
+  .sabor-info .nome{ font-size:13.5px; font-weight:600; }
+  .badge{
+    display:inline-block; font-size:9px; font-weight:700; text-transform:uppercase;
+    padding:2px 6px; border-radius:9px; margin-left:5px; vertical-align:middle;
+  }
+  .badge-basico{ background:#382c22; color:var(--muted); }
+  .badge-premium{ background:linear-gradient(90deg,var(--brasero-red),var(--brasero-orange)); color:#fff; }
+  .sabor-preco{ font-size:11px; color:var(--muted); }
+  .qty-input{ width:56px !important; text-align:center; padding:7px 4px !important; flex-shrink:0; }
+
+  .valor-servico-row{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    margin-top:4px;
+  }
+  .valor-servico-row input{ width:110px; text-align:right; }
+
+  /* ---- resumo (pra print) ---- */
+  .resumo{
+    background:var(--brasero-black-soft);
+    border:2px solid var(--brasero-orange);
+    border-radius:var(--radius);
+    padding:20px;
+    position:relative;
+    overflow:visible;
+  }
+  .resumo-header{ text-align:center; margin-bottom:14px; }
+  .resumo-header .titulo{
+    font-family:'Poppins',sans-serif; font-weight:800; font-size:16px;
+    color:var(--brasero-yellow);
+  }
+  .resumo-cliente{ font-size:13px; margin-bottom:12px; line-height:1.6; }
+  .resumo-cliente b{ color:var(--brasero-cream); }
+  .resumo-sabores{ font-size:13px; line-height:1.8; margin-bottom:12px; }
+  .resumo-sabores .linha{ display:flex; justify-content:space-between; gap:10px; }
+  .resumo-sabores .linha span:first-child{ color:var(--brasero-cream); }
+  .resumo-sabores .linha span:last-child{ color:var(--muted); white-space:nowrap; }
+  .resumo-totais{
+    border-top:1px dashed #382c22; padding-top:12px; font-size:14px;
+  }
+  .resumo-totais .linha{ display:flex; justify-content:space-between; margin-bottom:5px; }
+  .resumo-totais .linha.total{
+    margin-top:8px; padding-top:8px; border-top:1px solid #382c22;
+    font-size:17px; font-weight:800; color:var(--brasero-yellow);
+  }
+  .disclaimer{
+    text-align:center; font-size:11px; color:var(--muted); font-style:italic;
+    margin-top:12px;
+  }
+  .vazio{ color:var(--muted); font-size:13px; text-align:center; padding:10px 0; }
+
+  .btn-limpar{
+    width:100%; margin-top:6px; background:transparent; color:var(--muted);
+    border:1.5px solid #382c22; border-radius:10px; padding:11px;
+    font-family:'Poppins',sans-serif; font-weight:700; font-size:13.5px; cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="brand">
+  <picture>
+    <source srcset="logo.webp" type="image/webp">
+    <img src="logo.png" alt="Brasero 96" class="carimbo">
+  </picture>
+  <p class="brand-name">BRASERO 96</p>
+  <p>Orçamento manual — atendimento direto</p>
+</div>
+
+<div class="col">
+
+  <div class="atendente-bar">
+    <span>👤 Quem está atendendo:</span>
+    <select id="f-atendente">
+      <option value="">Selecione...</option>
+      <option>Jessica</option>
+      <option>Deborah</option>
+      <option value="__outro__">Outro nome...</option>
+    </select>
+    <input type="text" id="f-atendente-outro" placeholder="Seu nome" style="display:none;">
+  </div>
+
+  <div class="card">
+    <h2>Dados do cliente</h2>
+    <label class="first">Nome</label>
+    <input type="text" id="f-nome" placeholder="Nome do cliente">
+    <label>Telefone</label>
+    <input type="tel" id="f-telefone" placeholder="(85) 9 9999-9999">
+    <label>Tipo de evento</label>
+    <input type="text" id="f-tipo" placeholder="Ex: Aniversário">
+    <div class="grid2">
+      <div>
+        <label>Data prevista</label>
+        <input type="date" id="f-data">
+      </div>
+      <div>
+        <label>Nº de convidados</label>
+        <input type="number" id="f-convidados" min="1" placeholder="Ex: 30">
+      </div>
+    </div>
+    <label>Local</label>
+    <input type="text" id="f-local" placeholder="Ex: Fortaleza - Aldeota">
+  </div>
+
+  <div class="card">
+    <h2>Cardápio</h2>
+    <div id="sabores-container"></div>
+    <div class="valor-servico-row">
+      <label style="margin:0;">Valor do serviço</label>
+      <input type="number" id="f-servico" value="600" step="10">
+    </div>
+  </div>
+
+  <div class="resumo" id="resumo"></div>
+  <p id="status-salvo" style="text-align:center; font-size:11.5px; color:var(--muted); margin:-6px 0 0;"></p>
+
+  <button class="btn-limpar" id="btn-limpar">🔄 Limpar tudo (novo cliente)</button>
+
+</div>
+
+<script>
+// Mesma URL do Apps Script já publicada no site — o script identifica
+// que esse registro vem da ferramenta manual e grava na aba separada.
+const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyKVePTx5pmottEzVJJmQBXaiLSLKDMfhFZ8HAJIdK9OObkmiY_hF3i7vKWcZ5a73jNwA/exec";
+
+let SESSION_ID = "manual_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+
+const SABORES = [
+  { nome:"Lombinho Bovino", categoria:"Carne Bovina", nivel:"Básico", preco:9.00 },
+  { nome:"Coração Bovino", categoria:"Carne Bovina", nivel:"Básico", preco:6.00 },
+  { nome:"Cupim Bovino Tipo A", categoria:"Carne Bovina", nivel:"Básico", preco:8.00 },
+  { nome:"Carne do Sol (Lombinho Bovino)", categoria:"Carne Bovina", nivel:"Básico", preco:9.00 },
+  { nome:"Lombinho Bovino e Bacon intercalados", categoria:"Carne Bovina", nivel:"Básico", preco:8.00 },
+  { nome:"Asa de Frango", categoria:"Frango", nivel:"Básico", preco:8.00 },
+  { nome:"Coxinha da Asa (Drumette)", categoria:"Frango", nivel:"Básico", preco:8.00 },
+  { nome:"Filé de Peito de Frango", categoria:"Frango", nivel:"Básico", preco:7.00 },
+  { nome:"Coração de Frango", categoria:"Frango", nivel:"Básico", preco:9.00 },
+  { nome:"Medalhão de Frango e Bacon", categoria:"Frango", nivel:"Básico", preco:8.00 },
+  { nome:"Linguiça Mista para Churrasco", categoria:"Carne Suína", nivel:"Básico", preco:8.00 },
+  { nome:"Sobrepaleta Suína", categoria:"Carne Suína", nivel:"Básico", preco:7.00 },
+  { nome:"Alcatra Bovina", categoria:"Carne Bovina", nivel:"Premium", preco:10.00 },
+  { nome:"Cupim Bovino Tipo A Especial", categoria:"Carne Bovina", nivel:"Premium", preco:10.00 },
+  { nome:"Maminha da Alcatra Bovina", categoria:"Carne Bovina", nivel:"Premium", preco:10.00 },
+  { nome:"Picanha Bovina", categoria:"Carne Bovina", nivel:"Premium", preco:12.00 },
+  { nome:"Medalhão (Lombinho e Bacon)", categoria:"Carne Bovina", nivel:"Premium", preco:10.00 }
+];
+
+const qtd = {}; // nome -> quantidade livre (unidades, sem múltiplo obrigatório)
+
+const $ = (id) => document.getElementById(id);
+const fmt = (v) => "R$ " + v.toFixed(2).replace(".", ",");
+
+function nomeAtendente(){
+  const sel = $("f-atendente").value;
+  return sel === "__outro__" ? $("f-atendente-outro").value.trim() : sel;
+}
+
+function initAtendente(){
+  const salvo = localStorage.getItem("brasero96_atendente") || "";
+  const opcoesConhecidas = ["Jessica", "Deborah"];
+  if (salvo && opcoesConhecidas.includes(salvo)) {
+    $("f-atendente").value = salvo;
+  } else if (salvo) {
+    $("f-atendente").value = "__outro__";
+    $("f-atendente-outro").style.display = "block";
+    $("f-atendente-outro").value = salvo;
+  }
+  $("f-atendente").onchange = () => {
+    $("f-atendente-outro").style.display = $("f-atendente").value === "__outro__" ? "block" : "none";
+    salvarAtendente();
+    if (typeof agendarSalvamento === "function") agendarSalvamento();
+  };
+  $("f-atendente-outro").oninput = () => {
+    salvarAtendente();
+    if (typeof agendarSalvamento === "function") agendarSalvamento();
+  };
+}
+function salvarAtendente(){
+  const nome = nomeAtendente();
+  if (nome) localStorage.setItem("brasero96_atendente", nome);
+}
+initAtendente();
+
+function renderSabores(){
+  const container = $("sabores-container");
+  container.innerHTML = "";
+  const categorias = {};
+  SABORES.forEach(s => { (categorias[s.categoria] ||= []).push(s); });
+
+  Object.entries(categorias).forEach(([categoria, itens]) => {
+    const h = document.createElement("div");
+    h.className = "cat-title";
+    h.textContent = categoria;
+    container.appendChild(h);
+
+    itens.forEach(s => {
+      const row = document.createElement("div");
+      row.className = "sabor-row";
+      const badgeClass = s.nivel === "Premium" ? "badge-premium" : "badge-basico";
+      row.innerHTML = `
+        <div class="sabor-info">
+          <span class="nome">${s.nome}</span><span class="badge ${badgeClass}">${s.nivel}</span>
+          <div class="sabor-preco">${fmt(s.preco)} / espeto</div>
+        </div>
+        <input type="number" class="qty-input" min="0" step="1" value="${qtd[s.nome] || 0}">
+      `;
+      row.querySelector(".qty-input").oninput = (e) => {
+        qtd[s.nome] = Math.max(parseInt(e.target.value) || 0, 0);
+        renderResumo();
+        agendarSalvamento();
+      };
+      container.appendChild(row);
+    });
+  });
+}
+
+function selecionados(){
+  return SABORES
+    .filter(s => (qtd[s.nome] || 0) > 0)
+    .map(s => ({ nome:s.nome, nivel:s.nivel, unidades:qtd[s.nome], subtotal: qtd[s.nome] * s.preco }));
+}
+
+function renderResumo(){
+  const itens = selecionados();
+  const totalEspetos = itens.reduce((soma, i) => soma + i.unidades, 0);
+  const valorEspetinhos = itens.reduce((soma, i) => soma + i.subtotal, 0);
+  const valorServico = parseFloat($("f-servico").value) || 0;
+  const valorTotal = valorEspetinhos + valorServico;
+
+  const linhasSabores = itens.length
+    ? itens.map(i => `<div class="linha"><span>${i.unidades}x ${i.nome} (${i.nivel})</span><span>${fmt(i.subtotal)}</span></div>`).join("")
+    : `<div class="vazio">Nenhum sabor selecionado ainda</div>`;
+
+  $("resumo").innerHTML = `
+    <picture>
+      <source srcset="logo.webp" type="image/webp">
+      <img src="logo.png" alt="Brasero 96" class="carimbo-resumo">
+    </picture>
+    <div class="resumo-header"><span class="titulo">🔥 Orçamento Brasero 96</span>${nomeAtendente() ? `<div style="font-size:11px; color:var(--muted); margin-top:2px;">Atendido por ${nomeAtendente()}</div>` : ""}</div>
+    <div class="resumo-cliente">
+      <b>${$("f-nome").value || "Cliente"}</b> ${$("f-telefone").value ? "· " + $("f-telefone").value : ""}<br>
+      ${$("f-tipo").value || "Evento"} ${$("f-convidados").value ? "· " + $("f-convidados").value + " pessoas" : ""}<br>
+      ${$("f-data").value || "Data a combinar"} ${$("f-local").value ? "· " + $("f-local").value : ""}
+    </div>
+    <div class="resumo-sabores">${linhasSabores}</div>
+    <div class="resumo-totais">
+      <div class="linha"><span>Total de Espetinhos</span><span>${totalEspetos} espetos</span></div>
+      <div class="linha"><span>Valor dos espetinhos</span><span>${fmt(valorEspetinhos)}</span></div>
+      <div class="linha"><span>Valor do serviço</span><span>${fmt(valorServico)}</span></div>
+      <div class="linha total"><span>Valor total</span><span>${fmt(valorTotal)}</span></div>
+    </div>
+    <div class="disclaimer">Valores estimados, sujeitos a alteração sem aviso prévio.</div>
+  `;
+}
+
+let debounceSalvar;
+function agendarSalvamento(){
+  $("status-salvo").textContent = "Salvando...";
+  clearTimeout(debounceSalvar);
+  debounceSalvar = setTimeout(salvarNoHistorico, 1200);
+}
+
+function salvarNoHistorico(){
+  const itens = selecionados();
+  // Não salva enquanto não houver ao menos nome ou algum sabor escolhido —
+  // evita linhas vazias na planilha.
+  if (!$("f-nome").value.trim() && itens.length === 0) {
+    $("status-salvo").textContent = "";
+    return;
+  }
+  const totalEspetos = itens.reduce((soma, i) => soma + i.unidades, 0);
+  const valorEspetinhos = itens.reduce((soma, i) => soma + i.subtotal, 0);
+  const valorServico = parseFloat($("f-servico").value) || 0;
+  const valorTotal = valorEspetinhos + valorServico;
+  const saboresTexto = itens.map(i => `${i.unidades}x ${i.nome} (${i.nivel})`).join(" | ");
+
+  const params = new URLSearchParams({
+    origem: "manual",
+    sessionId: SESSION_ID,
+    atendente: nomeAtendente(),
+    nome: $("f-nome").value,
+    telefone: $("f-telefone").value,
+    tipoEvento: $("f-tipo").value,
+    data: $("f-data").value,
+    local: $("f-local").value,
+    convidados: $("f-convidados").value,
+    sabores: saboresTexto,
+    totalEspetos: totalEspetos,
+    valorEspetinhos: valorEspetinhos.toFixed(2),
+    valorServico: valorServico.toFixed(2),
+    valorTotal: valorTotal.toFixed(2),
+    callback: "jsonpCallbackManual"
+  });
+  window.jsonpCallbackManual = function(){
+    $("status-salvo").textContent = "✓ Salvo na planilha";
+  };
+  const script = document.createElement("script");
+  script.src = SHEETS_WEBAPP_URL + "?" + params.toString();
+  document.body.appendChild(script);
+  setTimeout(() => script.remove(), 8000);
+}
+
+["f-nome","f-telefone","f-tipo","f-data","f-convidados","f-local","f-servico"].forEach(id => {
+  $(id).addEventListener("input", () => { renderResumo(); agendarSalvamento(); });
+});
+
+$("btn-limpar").onclick = () => {
+  if (!confirm("Limpar todos os campos e quantidades pra começar um novo cliente?")) return;
+  ["f-nome","f-telefone","f-tipo","f-data","f-convidados","f-local"].forEach(id => $(id).value = "");
+  $("f-servico").value = 600;
+  Object.keys(qtd).forEach(k => delete qtd[k]);
+  SESSION_ID = "manual_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+  $("status-salvo").textContent = "";
+  renderSabores();
+  renderResumo();
+};
+
+renderSabores();
+renderResumo();
+</script>
+</body>
+</html>
