@@ -177,24 +177,9 @@
 
   <div class="card">
     <h2>Dados do cliente</h2>
-    <label class="first">Nome</label>
-    <input type="text" id="f-nome" placeholder="Nome do cliente">
-    <label>Telefone</label>
-    <input type="tel" id="f-telefone" placeholder="(85) 9 9999-9999">
-    <label>Tipo de evento</label>
-    <input type="text" id="f-tipo" placeholder="Ex: Aniversário">
-    <div class="grid2">
-      <div>
-        <label>Data prevista</label>
-        <input type="date" id="f-data">
-      </div>
-      <div>
-        <label>Nº de convidados</label>
-        <input type="number" id="f-convidados" min="1" placeholder="Ex: 30">
-      </div>
-    </div>
-    <label>Local</label>
-    <input type="text" id="f-local" placeholder="Ex: Fortaleza - Aldeota">
+    <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">Cole aqui a resposta do cliente (Nome, Telefone, Tipo de evento, Data prevista, Qtd. de pessoas, Endereço do evento).</p>
+    <textarea id="f-colado" placeholder="Nome: ...&#10;Telefone: ...&#10;Tipo de evento: ...&#10;Data prevista: ...&#10;Qtd. de pessoas: ...&#10;Endereço do evento: ..." style="width:100%; min-height:130px; -webkit-appearance:none; appearance:none; background:#0c0a09; border:1.5px solid #382c22; border-radius:9px; padding:10px; color:var(--brasero-cream); font-family:'Inter',sans-serif; font-size:13.5px; outline:none; resize:vertical;"></textarea>
+    <div id="previa-cliente" style="margin-top:10px; font-size:12px; color:var(--muted); line-height:1.7;"></div>
   </div>
 
   <div class="card">
@@ -207,6 +192,8 @@
   </div>
 
   <div class="resumo" id="resumo"></div>
+  <button class="btn-limpar" id="btn-copiar" style="background:#25D366; color:#04170a; border:none;">📋 Copiar texto para WhatsApp</button>
+  <p id="status-copiar" style="text-align:center; font-size:11.5px; color:var(--muted); margin:-6px 0 0;"></p>
 
   <button class="btn-limpar" id="btn-salvar" style="background:linear-gradient(90deg,var(--brasero-red),var(--brasero-orange)); color:#fff; border:none;">💾 Salvar no histórico</button>
   <p id="status-salvo" style="text-align:center; font-size:11.5px; color:var(--muted); margin:-6px 0 0;"></p>
@@ -218,7 +205,7 @@
 <script>
 // Mesma URL do Apps Script já publicada no site — o script identifica
 // que esse registro vem da ferramenta manual e grava na aba separada.
-const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyCbBk8-Xt_tLyM87jQVDOOEyiSbOjDu0uXLb4uuT2rL8ppUmD1247FfDVtx0AMudR1SQ/exec";
+const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyKVePTx5pmottEzVJJmQBXaiLSLKDMfhFZ8HAJIdK9OObkmiY_hF3i7vKWcZ5a73jNwA/exec";
 
 let SESSION_ID = "manual_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
 
@@ -246,6 +233,48 @@ const qtd = {}; // nome -> quantidade livre (unidades, sem múltiplo obrigatóri
 
 const $ = (id) => document.getElementById(id);
 const fmt = (v) => "R$ " + v.toFixed(2).replace(".", ",");
+
+const cliente = { nome:"", telefone:"", tipoEvento:"", data:"", convidados:"", local:"" };
+
+function extrairCampo(texto, rotulos){
+  const linhas = texto.split(/\r?\n/);
+  for (const linha of linhas){
+    for (const rotulo of rotulos){
+      const regex = new RegExp("^\\s*" + rotulo + "\\s*:\\s*(.+?)\\s*$", "i");
+      const m = linha.match(regex);
+      if (m && m[1]) return m[1].trim();
+    }
+  }
+  return "";
+}
+
+function processarColado(){
+  const texto = $("f-colado").value;
+  cliente.nome = extrairCampo(texto, ["nome"]);
+  cliente.telefone = extrairCampo(texto, ["telefone", "whatsapp", "contato"]);
+  cliente.tipoEvento = extrairCampo(texto, ["tipo de evento", "evento"]);
+  cliente.data = extrairCampo(texto, ["data prevista", "data do evento", "data"]);
+  cliente.convidados = extrairCampo(texto, ["qtd\\.? de pessoas", "quantidade de pessoas", "n[ºo°]?\\.? de convidados", "convidados", "pessoas"]);
+  cliente.local = extrairCampo(texto, ["endere[çc]o do evento", "endere[çc]o", "local"]);
+
+  const previa = $("previa-cliente");
+  if (!texto.trim()){
+    previa.innerHTML = "";
+    renderResumo();
+    return;
+  }
+  previa.innerHTML = `
+    <b style="color:var(--brasero-cream);">Entendi assim:</b><br>
+    Nome: ${cliente.nome || "<span style=\"color:#ff8a80;\">não identificado</span>"}<br>
+    Telefone: ${cliente.telefone || "<span style=\"color:#ff8a80;\">não identificado</span>"}<br>
+    Tipo de evento: ${cliente.tipoEvento || "-"}<br>
+    Data prevista: ${cliente.data || "-"}<br>
+    Qtd. de pessoas: ${cliente.convidados || "-"}<br>
+    Endereço: ${cliente.local || "-"}
+  `;
+  renderResumo();
+}
+$("f-colado").addEventListener("input", processarColado);
 
 function nomeAtendente(){
   const sel = $("f-atendente").value;
@@ -299,10 +328,12 @@ function renderSabores(){
           <span class="nome">${s.nome}</span><span class="badge ${badgeClass}">${s.nivel}</span>
           <div class="sabor-preco">${fmt(s.preco)} / espeto</div>
         </div>
-        <input type="number" class="qty-input" min="0" step="1" value="${qtd[s.nome] || 0}">
+        <select class="qty-input" style="width:64px !important;">
+          ${[0,5,10,15,20,25,30,35,40,45,50].map(n => `<option value="${n}" ${((qtd[s.nome]||0)===n) ? "selected":""}>${n}</option>`).join("")}
+        </select>
       `;
-      row.querySelector(".qty-input").oninput = (e) => {
-        qtd[s.nome] = Math.max(parseInt(e.target.value) || 0, 0);
+      row.querySelector(".qty-input").onchange = (e) => {
+        qtd[s.nome] = parseInt(e.target.value) || 0;
         renderResumo();
       };
       container.appendChild(row);
@@ -334,9 +365,9 @@ function renderResumo(){
     </picture>
     <div class="resumo-header"><span class="titulo">🔥 Orçamento Brasero 96</span>${nomeAtendente() ? `<div style="font-size:11px; color:var(--muted); margin-top:2px;">Atendido por ${nomeAtendente()}</div>` : ""}</div>
     <div class="resumo-cliente">
-      <b>${$("f-nome").value || "Cliente"}</b> ${$("f-telefone").value ? "· " + $("f-telefone").value : ""}<br>
-      ${$("f-tipo").value || "Evento"} ${$("f-convidados").value ? "· " + $("f-convidados").value + " pessoas" : ""}<br>
-      ${$("f-data").value || "Data a combinar"} ${$("f-local").value ? "· " + $("f-local").value : ""}
+      <b>${cliente.nome || "Cliente"}</b> ${cliente.telefone ? "· " + cliente.telefone : ""}<br>
+      ${cliente.tipoEvento || "Evento"} ${cliente.convidados ? "· " + cliente.convidados + " pessoas" : ""}<br>
+      ${cliente.data || "Data a combinar"} ${cliente.local ? "· " + cliente.local : ""}
     </div>
     <div class="resumo-sabores">${linhasSabores}</div>
     <div class="resumo-totais">
@@ -351,7 +382,7 @@ function renderResumo(){
 
 function salvarNoHistorico(){
   const itens = selecionados();
-  if (!$("f-nome").value.trim() && itens.length === 0) {
+  if (!cliente.nome.trim() && itens.length === 0) {
     $("status-salvo").textContent = "Preencha ao menos o nome ou um sabor antes de salvar.";
     $("status-salvo").style.color = "#ff8a80";
     return;
@@ -369,12 +400,12 @@ function salvarNoHistorico(){
     origem: "manual",
     sessionId: SESSION_ID,
     atendente: nomeAtendente(),
-    nome: $("f-nome").value,
-    telefone: $("f-telefone").value,
-    tipoEvento: $("f-tipo").value,
-    data: $("f-data").value,
-    local: $("f-local").value,
-    convidados: $("f-convidados").value,
+    nome: cliente.nome,
+    telefone: cliente.telefone,
+    tipoEvento: cliente.tipoEvento,
+    data: cliente.data,
+    local: cliente.local,
+    convidados: cliente.convidados,
     sabores: saboresTexto,
     totalEspetos: totalEspetos,
     valorEspetinhos: valorEspetinhos.toFixed(2),
@@ -401,15 +432,72 @@ function salvarNoHistorico(){
   setTimeout(() => script.remove(), 8000);
 }
 
-["f-nome","f-telefone","f-tipo","f-data","f-convidados","f-local","f-servico"].forEach(id => {
-  $(id).addEventListener("input", renderResumo);
-});
+function textoParaWhatsapp(){
+  const itens = selecionados();
+  const totalEspetos = itens.reduce((soma, i) => soma + i.unidades, 0);
+  const valorEspetinhos = itens.reduce((soma, i) => soma + i.subtotal, 0);
+  const valorServico = parseFloat($("f-servico").value) || 0;
+  const valorTotal = valorEspetinhos + valorServico;
+
+  const linhas = [
+    "🔥 *Orçamento Brasero 96*",
+    "",
+    `*Cliente:* ${cliente.nome || "-"}`,
+    `*Evento:* ${cliente.tipoEvento || "-"} ${cliente.convidados ? "· " + cliente.convidados + " pessoas" : ""}`,
+    `*Data:* ${cliente.data || "a combinar"} ${cliente.local ? "· " + cliente.local : ""}`,
+    "",
+    "*Sabores:*",
+    ...(itens.length
+      ? itens.map(i => `- ${i.unidades}x ${i.nome} (${i.nivel}) — ${fmt(i.subtotal)}`)
+      : ["Nenhum sabor selecionado ainda"]),
+    "",
+    `Total de Espetinhos: ${totalEspetos} espetos`,
+    `Valor dos espetinhos: ${fmt(valorEspetinhos)}`,
+    `Valor do serviço: ${fmt(valorServico)}`,
+    "",
+    `*Valor total: ${fmt(valorTotal)}*`,
+    "",
+    "_Valores estimados, sujeitos a alteração sem aviso prévio._"
+  ];
+  return linhas.join("\n");
+}
+
+function copiarTexto(texto){
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(texto);
+  }
+  const temp = document.createElement("textarea");
+  temp.value = texto;
+  temp.style.position = "fixed";
+  temp.style.opacity = "0";
+  document.body.appendChild(temp);
+  temp.select();
+  document.execCommand("copy");
+  document.body.removeChild(temp);
+  return Promise.resolve();
+}
+
+$("btn-copiar").onclick = () => {
+  copiarTexto(textoParaWhatsapp())
+    .then(() => {
+      $("status-copiar").textContent = "✓ Texto copiado! Já pode colar no WhatsApp.";
+      $("status-copiar").style.color = "var(--muted)";
+    })
+    .catch(() => {
+      $("status-copiar").textContent = "❌ Não foi possível copiar automaticamente. Copie o texto manualmente.";
+      $("status-copiar").style.color = "#ff8a80";
+    });
+};
+
+$("f-servico").addEventListener("input", renderResumo);
 
 $("btn-salvar").onclick = salvarNoHistorico;
 
 $("btn-limpar").onclick = () => {
   if (!confirm("Limpar todos os campos e quantidades pra começar um novo cliente?")) return;
-  ["f-nome","f-telefone","f-tipo","f-data","f-convidados","f-local"].forEach(id => $(id).value = "");
+  $("f-colado").value = "";
+  Object.assign(cliente, { nome:"", telefone:"", tipoEvento:"", data:"", convidados:"", local:"" });
+  $("previa-cliente").innerHTML = "";
   $("f-servico").value = 600;
   Object.keys(qtd).forEach(k => delete qtd[k]);
   SESSION_ID = "manual_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
