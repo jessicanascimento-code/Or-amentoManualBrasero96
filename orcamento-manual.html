@@ -250,12 +250,55 @@ function extrairCampo(texto, rotulos){
 
 function processarColado(){
   const texto = $("f-colado").value;
+
+  // 1ª tentativa: pelos rótulos ("Nome: ...", "Telefone: ...", etc.)
   cliente.nome = extrairCampo(texto, ["nome"]);
   cliente.telefone = extrairCampo(texto, ["telefone", "whatsapp", "contato"]);
   cliente.tipoEvento = extrairCampo(texto, ["tipo de evento", "evento"]);
   cliente.data = extrairCampo(texto, ["data prevista", "data do evento", "data"]);
   cliente.convidados = extrairCampo(texto, ["qtd\\.? de pessoas", "quantidade de pessoas", "n[ºo°]?\\.? de convidados", "convidados", "pessoas"]);
   cliente.local = extrairCampo(texto, ["endere[çc]o do evento", "endere[çc]o", "local"]);
+
+  // 2ª tentativa: reconhecimento livre, pra quando o cliente não usa rótulos
+  // (ex: manda só "Jessica" e "20 pessoas" em linhas soltas).
+  const linhas = texto.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const usadas = new Set();
+  linhas.forEach((linha, i) => { if (linha.includes(":")) usadas.add(i); });
+
+  linhas.forEach((linha, i) => {
+    if (usadas.has(i)) return;
+
+    if (!cliente.telefone) {
+      const soDigitos = linha.replace(/\D/g, "");
+      if (soDigitos.length >= 8 && soDigitos.length <= 13 && soDigitos.length >= linha.length * 0.6) {
+        cliente.telefone = linha;
+        usadas.add(i);
+        return;
+      }
+    }
+    if (!cliente.convidados) {
+      const m = linha.match(/(\d+)\s*(pessoas|convidados|pax|convidado)/i);
+      if (m) {
+        cliente.convidados = m[1];
+        usadas.add(i);
+        return;
+      }
+    }
+    if (!cliente.data) {
+      const m = linha.match(/\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}-\d{1,2}-\d{1,2})\b/);
+      if (m) {
+        cliente.data = m[1];
+        usadas.add(i);
+        return;
+      }
+    }
+  });
+
+  // O que sobrar (primeira linha ainda não usada) vira o nome, se não veio por rótulo.
+  if (!cliente.nome) {
+    const candidata = linhas.find((l, i) => !usadas.has(i));
+    if (candidata) cliente.nome = candidata;
+  }
 
   const previa = $("previa-cliente");
   if (!texto.trim()){
@@ -358,17 +401,21 @@ function renderResumo(){
     ? itens.map(i => `<div class="linha"><span>${i.unidades}x ${i.nome} (${i.nivel})</span><span>${fmt(i.subtotal)}</span></div>`).join("")
     : `<div class="vazio">Nenhum sabor selecionado ainda</div>`;
 
+  // Monta o bloco de dados do cliente só com o que foi preenchido de fato —
+  // sem mostrar "Cliente"/"Evento"/"Data a combinar" como texto de preenchimento.
+  const linha1 = [cliente.nome ? `<b>${cliente.nome}</b>` : "", cliente.telefone].filter(Boolean).join(" · ");
+  const linha2 = [cliente.tipoEvento, cliente.convidados ? cliente.convidados + " pessoas" : ""].filter(Boolean).join(" · ");
+  const linha3 = [cliente.data, cliente.local].filter(Boolean).join(" · ");
+  const linhasCliente = [linha1, linha2, linha3].filter(Boolean).join("<br>");
+  const blocoCliente = linhasCliente ? `<div class="resumo-cliente">${linhasCliente}</div>` : "";
+
   $("resumo").innerHTML = `
     <picture>
       <source srcset="logo.webp" type="image/webp">
       <img src="logo.png" alt="Brasero 96" class="carimbo-resumo">
     </picture>
     <div class="resumo-header"><span class="titulo">🔥 Orçamento Brasero 96</span>${nomeAtendente() ? `<div style="font-size:11px; color:var(--muted); margin-top:2px;">Atendido por ${nomeAtendente()}</div>` : ""}</div>
-    <div class="resumo-cliente">
-      <b>${cliente.nome || "Cliente"}</b> ${cliente.telefone ? "· " + cliente.telefone : ""}<br>
-      ${cliente.tipoEvento || "Evento"} ${cliente.convidados ? "· " + cliente.convidados + " pessoas" : ""}<br>
-      ${cliente.data || "Data a combinar"} ${cliente.local ? "· " + cliente.local : ""}
-    </div>
+    ${blocoCliente}
     <div class="resumo-sabores">${linhasSabores}</div>
     <div class="resumo-totais">
       <div class="linha"><span>Total de Espetinhos</span><span>${totalEspetos} espetos</span></div>
@@ -439,17 +486,23 @@ function textoParaWhatsapp(){
   const valorServico = parseFloat($("f-servico").value) || 0;
   const valorTotal = valorEspetinhos + valorServico;
 
+  const linhaEvento = [cliente.tipoEvento, cliente.convidados ? cliente.convidados + " pessoas" : ""].filter(Boolean).join(" · ");
+  const linhaData = [cliente.data, cliente.local].filter(Boolean).join(" · ");
+
   const linhas = [
     "🔥 *Orçamento Brasero 96*",
     "",
-    `*Cliente:* ${cliente.nome || "-"}`,
-    `*Evento:* ${cliente.tipoEvento || "-"} ${cliente.convidados ? "· " + cliente.convidados + " pessoas" : ""}`,
-    `*Data:* ${cliente.data || "a combinar"} ${cliente.local ? "· " + cliente.local : ""}`,
-    "",
-    "*Sabores:*",
-    ...(itens.length
-      ? itens.map(i => `- ${i.unidades}x ${i.nome} (${i.nivel}) — ${fmt(i.subtotal)}`)
-      : ["Nenhum sabor selecionado ainda"]),
+  ];
+  if (cliente.nome) linhas.push(`*Cliente:* ${cliente.nome}`);
+  if (cliente.telefone) linhas.push(`*Telefone:* ${cliente.telefone}`);
+  if (linhaEvento) linhas.push(`*Evento:* ${linhaEvento}`);
+  if (linhaData) linhas.push(`*Data:* ${linhaData}`);
+  linhas.push("");
+  linhas.push("*Sabores:*");
+  linhas.push(...(itens.length
+    ? itens.map(i => `- ${i.unidades}x ${i.nome} (${i.nivel}) — ${fmt(i.subtotal)}`)
+    : ["Nenhum sabor selecionado ainda"]));
+  linhas.push(
     "",
     `Total de Espetinhos: ${totalEspetos} espetos`,
     `Valor dos espetinhos: ${fmt(valorEspetinhos)}`,
@@ -458,7 +511,7 @@ function textoParaWhatsapp(){
     `*Valor total: ${fmt(valorTotal)}*`,
     "",
     "_Valores estimados, sujeitos a alteração sem aviso prévio._"
-  ];
+  );
   return linhas.join("\n");
 }
 
