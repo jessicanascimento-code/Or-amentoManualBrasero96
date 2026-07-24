@@ -248,6 +248,15 @@ function extrairCampo(texto, rotulos){
   return "";
 }
 
+function semAcento(s){
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+const TIPOS_EVENTO_CONHECIDOS = [
+  "aniversario", "confraternizacao", "corporativo", "cha revelacao",
+  "cha de fralda", "cha de cozinha", "noivado", "casamento"
+];
+
 function processarColado(){
   const texto = $("f-colado").value;
 
@@ -259,45 +268,58 @@ function processarColado(){
   cliente.convidados = extrairCampo(texto, ["qtd\\.? de pessoas", "quantidade de pessoas", "n[ºo°]?\\.? de convidados", "convidados", "pessoas"]);
   cliente.local = extrairCampo(texto, ["endere[çc]o do evento", "endere[çc]o", "local"]);
 
-  // 2ª tentativa: reconhecimento livre, pra quando o cliente não usa rótulos
-  // (ex: manda só "Jessica" e "20 pessoas" em linhas soltas).
+  // 2ª tentativa: reconhecimento livre, pra quando o cliente manda cada
+  // informação numa linha solta, sem "Nome:", "Telefone:" etc.
   const linhas = texto.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   const usadas = new Set();
   linhas.forEach((linha, i) => { if (linha.includes(":")) usadas.add(i); });
 
+  // telefone: sequência de dígitos (8 a 13 dígitos)
   linhas.forEach((linha, i) => {
-    if (usadas.has(i)) return;
-
-    if (!cliente.telefone) {
-      const soDigitos = linha.replace(/\D/g, "");
-      if (soDigitos.length >= 8 && soDigitos.length <= 13 && soDigitos.length >= linha.length * 0.6) {
-        cliente.telefone = linha;
-        usadas.add(i);
-        return;
-      }
-    }
-    if (!cliente.convidados) {
-      const m = linha.match(/(\d+)\s*(pessoas|convidados|pax|convidado)/i);
-      if (m) {
-        cliente.convidados = m[1];
-        usadas.add(i);
-        return;
-      }
-    }
-    if (!cliente.data) {
-      const m = linha.match(/\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}-\d{1,2}-\d{1,2})\b/);
-      if (m) {
-        cliente.data = m[1];
-        usadas.add(i);
-        return;
-      }
+    if (usadas.has(i) || cliente.telefone) return;
+    const soDigitos = linha.replace(/\D/g, "");
+    if (soDigitos.length >= 8 && soDigitos.length <= 13 && soDigitos.length >= linha.length * 0.6) {
+      cliente.telefone = linha;
+      usadas.add(i);
     }
   });
 
-  // O que sobrar (primeira linha ainda não usada) vira o nome, se não veio por rótulo.
+  // data: formatos comuns (dd/mm/aa, dd/mm/aaaa, aaaa-mm-dd)
+  linhas.forEach((linha, i) => {
+    if (usadas.has(i) || cliente.data) return;
+    const m = linha.match(/\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}-\d{1,2}-\d{1,2})\b/);
+    if (m) { cliente.data = m[1]; usadas.add(i); }
+  });
+
+  // tipo de evento: compara com a lista de tipos usados no site
+  linhas.forEach((linha, i) => {
+    if (usadas.has(i) || cliente.tipoEvento) return;
+    const normalizada = semAcento(linha);
+    if (TIPOS_EVENTO_CONHECIDOS.some(tipo => normalizada.includes(tipo))) {
+      cliente.tipoEvento = linha;
+      usadas.add(i);
+    }
+  });
+
+  // convidados: "20 pessoas"/"20 convidados" OU só o número sozinho numa linha
+  linhas.forEach((linha, i) => {
+    if (usadas.has(i) || cliente.convidados) return;
+    const comPalavra = linha.match(/(\d+)\s*(pessoas|convidados|pax|convidado)/i);
+    if (comPalavra) { cliente.convidados = comPalavra[1]; usadas.add(i); return; }
+    if (/^\d{1,3}$/.test(linha)) { cliente.convidados = linha; usadas.add(i); }
+  });
+
+  // nome: se ainda não veio por rótulo, é a primeira linha que sobrar
   if (!cliente.nome) {
     const candidata = linhas.find((l, i) => !usadas.has(i));
+    if (candidata) usadas.add(linhas.indexOf(candidata));
     if (candidata) cliente.nome = candidata;
+  }
+
+  // endereço: o que sobrar depois de tudo isso (junta se sobrar mais de uma linha)
+  if (!cliente.local) {
+    const sobras = linhas.filter((l, i) => !usadas.has(i));
+    if (sobras.length) cliente.local = sobras.join(", ");
   }
 
   const previa = $("previa-cliente");
